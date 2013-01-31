@@ -47,37 +47,17 @@ void remplirPlateau(Plateau *p,int nbCelluleVivante)
 	if(nbCelluleVivante <= maxCase )
 	{
 		srand(time(NULL));
-		/*while(i<maxCase && reste >0)
-		{
-			j=0;
-			while(j<maxCase&& reste >0)
-			{
-				alea = rand()%(3 - 1) + 1; // 1 chance sur 3 pur alea = 1
-				if(alea==1 && tab[i][j]==0)
-				{
-					tab[i][j] = 1;
-					reste--;
-				}
-				j++;
-			}
-			i++;
-			
-			if(i == 48 && j == 48 && reste > 0){i = 0;j =0;}//si on finit de parcourir et que nbRemplit < nbCellule on recommence
-		}*/
 
 			while(reste>0)
 			{
-				i=rand()%(maxCase-1);
-				j=rand()%(maxCase-1);
+				i=rand()%(LARGEUR_DAMIER-1);
+				j=rand()%(LARGEUR_DAMIER-1);
 				if(p->matrice[i][j]!=1)
 				{
 					p->matrice[i][j]=1;
-					//printf("%d",p->matrice[i][j]);
 					reste--;
 				}
 			}
-			//en sortant de la boucle while certaines case qui avait été passer à 1 revienne à 0
-
 		}
 	
 	else {printf("Désolé nombre de celulle trop grand \n");}
