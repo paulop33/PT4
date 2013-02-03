@@ -30,7 +30,7 @@ void initialiserPlateau(Plateau *p)
 {	
 	int i,j;
 	
-	/*allocation d'un tableau de trois tableaux d'entiers */
+	/*allocation d'un tableau de p.taille tableaux d'entiers */
 	p->matrice = malloc ( p->taille * sizeof(Cellule*) );    
 
 	for ( i = 0 ; i < p->taille ; i ++ )
