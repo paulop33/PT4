@@ -96,6 +96,7 @@ void remplirPlateau(Plateau *p,int nbCelluleVivante)
 					p->matrice[i][j].val=1;
 					reste--;
 				}
+				//printf("fait ");
 			}
 		}
 	
