@@ -5,7 +5,7 @@
 #include <pthread.h>
 #include <string.h>
 
-#define LARGEUR_DAMIER 7
+//#define LARGEUR_DAMIER 7
 
 
 typedef struct Cellule Cellule;
@@ -21,7 +21,8 @@ struct Cellule
 typedef struct Plateau Plateau;
 struct Plateau
 {
-	Cellule matrice[LARGEUR_DAMIER][LARGEUR_DAMIER];
+	Cellule ** matrice;
+	int taille;
 };
 
 /*Mettre toutes les cellules a 0*/
@@ -29,20 +30,37 @@ void initialiserPlateau(Plateau *p)
 {	
 	int i,j;
 	
-	for(i=0; i<LARGEUR_DAMIER;i++){
-		for (j=0; j<LARGEUR_DAMIER;j++){
+	/*allocation d'un tableau de trois tableaux d'entiers */
+	p->matrice = malloc ( p->taille * sizeof(Cellule*) );    
+
+	for ( i = 0 ; i < p->taille ; i ++ )
+	{
+		 /* allocation d'un tableau de tableau */
+		 p->matrice[i] = calloc ( p->taille , sizeof(Cellule) ); 
+	}
+
+	for(i=0; i< p->taille;i++){
+		for (j=0; j< p->taille;j++){
 			p->matrice[i][j].val = 0;
 			p->matrice[i][j].posLigne = j;
 			p->matrice[i][j].posCol = i;//Toutes les celulles du plateau a 0
 		}
 	}
+		
+}
+
+/*Libére la mémoire allouée pour la matrice du plateau*/
+void libererMatricePlateau(Plateau *p)
+{
+	free(p->matrice);
+	p->matrice = NULL;
 }
 
 /*Affiche le plateau*/
 void afficherPlateau(Plateau p){
 	int i,j;
-	for (i=0; i<LARGEUR_DAMIER;i++){
-		for (j=0; j<LARGEUR_DAMIER;j++)
+	for (i=0; i<p.taille;i++){
+		for (j=0; j<p.taille;j++)
 		{
 			printf("%d",p.matrice[i][j].val); 
 		}
@@ -55,7 +73,7 @@ void afficherPlateau(Plateau p){
 void remplirPlateau(Plateau *p,int nbCelluleVivante)
 {
 	int reste = nbCelluleVivante;
-	int maxCase = LARGEUR_DAMIER*LARGEUR_DAMIER;
+	int maxCase = (p->taille*p->taille) ;
 	int i,j;
 	
 	
@@ -65,8 +83,8 @@ void remplirPlateau(Plateau *p,int nbCelluleVivante)
 
 			while(reste>0)
 			{
-				i=rand()%(LARGEUR_DAMIER-1);
-				j=rand()%(LARGEUR_DAMIER-1);
+				i=rand()%(p->taille -1);
+				j=rand()%(p->taille -1);
 				if(p->matrice[i][j].val!=1)//si la valeur de la cellule n'est pas vivante
 				{
 					p->matrice[i][j].val=1;
@@ -83,7 +101,7 @@ int nombreVoisinsVivants(Plateau p, Cellule c)
 {
 	int nbV = 0;
 	
-	if(c.posLigne > 1 && c.posLigne < LARGEUR_DAMIER-1 && c.posCol > 1 && c.posCol < LARGEUR_DAMIER-1)//Cellules vers le centre
+	if(c.posLigne > 1 && c.posLigne < p.taille-1 && c.posCol > 1 && c.posCol < p.taille-1)//Cellules vers le centre
 	{
 		if(p.matrice[c.posLigne-1][c.posCol].val == 1){nbV++;}//haut
 		if(p.matrice[c.posLigne+1][c.posCol].val == 1){nbV++;}//bas
@@ -110,11 +128,14 @@ int main(int argc, char *argv[])
 	int nb;
 	int i,j;
 	
-	printf("Nombre de cellule vivantes : ");
+	printf("Largeur matrice : ");
 	scanf("%d",&nb); 
 	
 	Plateau p;
+	p.taille = nb;
 	
+	printf("Nombre de cellule vivantes : ");
+	scanf("%d",&nb); 
 	
 	printf("Initilisation \n");
 	initialiserPlateau(&p);
@@ -124,12 +145,18 @@ int main(int argc, char *argv[])
 	remplirPlateau(&p,nb);
 	afficherPlateau(p);
 	
-	
-	for(i=1; i<LARGEUR_DAMIER-1;i++){
-		for (j=0; j<LARGEUR_DAMIER-1;j++){
+	/*for(i=1; i<p.taille-1;i++){
+		for (j=0; j<p.taille-1;j++){
 			nombreVoisinsVivants(p,p.matrice[i][j]);
 		}
-	}
+	}*/
+	
+	
+	printf("\n\nLiberation plateau \n");
+	libererMatricePlateau(&p);
+	
+	
+	
 	
 	
 	
