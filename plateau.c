@@ -52,9 +52,15 @@ void initialiserPlateau(Plateau *p)
 /*Libére la mémoire allouée pour la matrice du plateau*/
 void libererMatricePlateau(Plateau *p)
 {
+	for(i = 0 ; i< p->taille ; i++)
+	{
+		free(p->matrice[i]);
+	}
+	
 	free(p->matrice);
 	p->matrice = NULL;
 }
+
 
 /*Affiche le plateau*/
 void afficherPlateau(Plateau p){
@@ -90,6 +96,7 @@ void remplirPlateau(Plateau *p,int nbCelluleVivante)
 					p->matrice[i][j].val=1;
 					reste--;
 				}
+				printf("fait ");
 			}
 		}
 	
@@ -130,6 +137,7 @@ int main(int argc, char *argv[])
 	
 	printf("Largeur matrice : ");
 	scanf("%d",&nb); 
+	printf("Nombre total de cellules %d \n", nb*nb);
 	
 	Plateau p;
 	p.taille = nb;
