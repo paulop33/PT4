@@ -23,6 +23,7 @@ struct Plateau
 {
 	Cellule ** matrice;
 	int taille;
+	//int ** num_neigh
 };
 
 /*Mettre toutes les cellules a 0*/
@@ -108,7 +109,7 @@ int nombreVoisinsVivants(Plateau p, Cellule c)
 {
 	int nbV = 0;
 
-	if(c.posLigne > 1 && c.posLigne < p.taille-1 && c.posCol > 1 && c.posCol < p.taille-1)//Cellules vers le centre
+	if(c.posLigne > 0 && c.posLigne < p.taille-1 && c.posCol > 0 && c.posCol < p.taille-1)//Cellules vers le centre
 	{
 		if(p.matrice[c.posLigne-1][c.posCol].val == 1){nbV++;}//haut
 		if(p.matrice[c.posLigne+1][c.posCol].val == 1){nbV++;}//bas
@@ -124,7 +125,7 @@ int nombreVoisinsVivants(Plateau p, Cellule c)
 	}
 
 	//else if(){}
-	printf("Cellule (%d,%d) %d voisins \n",c.posLigne,c.posCol,nbV);
+	//printf("Cellule (%d,%d) %d voisins \n",c.posLigne,c.posCol,nbV);
 	return nbV;
 
 }
@@ -135,12 +136,14 @@ int main(int argc, char *argv[])
 	int nb;
 	int i,j;
 
+
 	printf("Largeur matrice : ");
 	scanf("%d",&nb); 
 	printf("Nombre total de cellules %d \n", nb*nb);
 
 	Plateau p;
 	p.taille = nb;
+	int num_neigh[p.taille][p.taille];
 
 	printf("Nombre de cellule vivantes : ");
 	scanf("%d",&nb); 
@@ -153,11 +156,13 @@ int main(int argc, char *argv[])
 	remplirPlateau(&p,nb);
 	afficherPlateau(p);
 
-	/*for(i=1; i<p.taille-1;i++){
-		for (j=0; j<p.taille-1;j++){
-			nombreVoisinsVivants(p,p.matrice[i][j]);
+	for(i=0; i<p.taille;i++){
+		for (j=0; j<p.taille;j++){
+			num_neigh[i][j]=nombreVoisinsVivants(p,p.matrice[i][j]);
+			printf("Cellule (%d,%d) %d voisins \n",i,j,num_neigh[i][j]);
+			
 		}
-	}*/
+	}
 
 
 	printf("\n\nLiberation plateau \n");
