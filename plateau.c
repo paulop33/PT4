@@ -87,17 +87,16 @@ void remplirPlateau(Plateau *p,int nbCelluleVivante)
 	if(nbCelluleVivante <= maxCase )
 	{
 		srand(time(NULL));
-
 			while(reste>0)
 			{
-				i=rand()%(p->taille -1);
-				j=rand()%(p->taille -1);
+				i=rand()%(p->taille);
+				j=rand()%(p->taille);
+				
 				if(p->matrice[i][j].val!=1)//si la valeur de la cellule n'est pas vivante
 				{
 					p->matrice[i][j].val=1;
 					reste--;
 				}
-				//printf("fait ");
 			}
 		}
 
