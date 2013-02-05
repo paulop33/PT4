@@ -29,8 +29,7 @@ struct Plateau
 /*Mettre toutes les cellules a 0*/
 void initialiserPlateau(Plateau *p)
 {	
-	int i,j,test;
-	test = 0;
+	int i,j;
 
 	/*allocation d'un tableau de p.taille tableaux d'entiers */
 	p->matrice = malloc ( p->taille * sizeof(Cellule*) );    
@@ -43,11 +42,10 @@ void initialiserPlateau(Plateau *p)
 
 	for(i=0; i< p->taille;i++){
 		for (j=0; j< p->taille;j++){
-			p->matrice[i][j].val = test;
-			p->matrice[i][j].posLigne = j;
-			p->matrice[i][j].posCol = i;
-			test++;//Toutes les celulles du plateau a 0
+			p->matrice[i][j].val = 0;//Toutes les celulles du plateau a 0
 		}
+			p->matrice[i][j].posLigne = i;
+			p->matrice[i][j].posCol = j;
 	}
 
 }
