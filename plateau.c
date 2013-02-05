@@ -26,6 +26,14 @@ struct Plateau
 	//int ** num_neigh
 };
 
+typedef struct sousPlateau sousPlateau;
+struct sousPlateau
+{
+	Cellule ** matrice;
+	int tailleLigne;
+	int tailleCol;
+};
+
 /*Mettre toutes les cellules a 0*/
 void initialiserPlateau(Plateau *p)
 {	
@@ -42,10 +50,10 @@ void initialiserPlateau(Plateau *p)
 
 	for(i=0; i< p->taille;i++){
 		for (j=0; j< p->taille;j++){
-			p->matrice[i][j].val = 0;//Toutes les celulles du plateau a 0
-		}
+			p->matrice[i][j].val = 0;
 			p->matrice[i][j].posLigne = i;
 			p->matrice[i][j].posCol = j;
+		}
 	}
 
 }
@@ -108,28 +116,36 @@ void remplirPlateau(Plateau *p,int nbCelluleVivante)
 int nombreVoisinsVivants(Plateau p, Cellule c)
 {
 	int nbV = 0;
+	
+	if(c.posLigne > 0 && p.matrice[c.posLigne-1][c.posCol].val == 1){nbV++;}//haut
+	if(c.posLigne < p.taille-1 && p.matrice[c.posLigne+1][c.posCol].val == 1){nbV++;}//bas
+	if(c.posCol > 0 && p.matrice[c.posLigne][c.posCol-1].val == 1){nbV++;}//gauche
+	if(c.posCol < p.taille-1 && p.matrice[c.posLigne][c.posCol+1].val == 1){nbV++;}//droite
 
-	if(c.posLigne > 0 && c.posLigne < p.taille-1 && c.posCol > 0 && c.posCol < p.taille-1)//Cellules vers le centre
-	{
-		if(p.matrice[c.posLigne-1][c.posCol].val == 1){nbV++;}//haut
-		if(p.matrice[c.posLigne+1][c.posCol].val == 1){nbV++;}//bas
-		if(p.matrice[c.posLigne][c.posCol-1].val == 1){nbV++;}//gauche
-		if(p.matrice[c.posLigne][c.posCol+1].val == 1){nbV++;}//droite
+	if(c.posLigne > 0 && c.posCol > 0 && p.matrice[c.posLigne-1][c.posCol-1].val == 1){nbV++;}//haut-gauche
+	if(c.posLigne > 0 && c.posCol < p.taille-1 && p.matrice[c.posLigne-1][c.posCol+1].val == 1){nbV++;}//haut-droite
 
-		if(p.matrice[c.posLigne-1][c.posCol-1].val == 1){nbV++;}//haut-gauche
-		if(p.matrice[c.posLigne-1][c.posCol+1].val == 1){nbV++;}//haut-droite
+	if(c.posLigne < p.taille-1 && c.posCol > 0 && p.matrice[c.posLigne+1][c.posCol-1].val == 1){nbV++;}//bas-gauche
+	if(c.posLigne < p.taille-1 && c.posCol < p.taille && p.matrice[c.posLigne+1][c.posCol+1].val == 1){nbV++;}//bas-droite
 
-		if(p.matrice[c.posLigne+1][c.posCol-1].val == 1){nbV++;}//bas-gauche
-		if(p.matrice[c.posLigne+1][c.posCol+1].val == 1){nbV++;}//bas-droite
-
-	}
-
-	//else if(){}
-	//printf("Cellule (%d,%d) %d voisins \n",c.posLigne,c.posCol,nbV);
 	return nbV;
 
 }
 
+void miseAjourCellule(sousPlateau *sp,Cellule *c)
+{
+	if(c->val == 0 && c->nbVoisins ==3)//si la cellule est morte et extactement 3 voisins vivants
+	{
+		c->val = 1;
+	}
+	
+	else if(c->val == 1)//si elle est vivante
+	{
+		if(c->nbVoisins < 2){ c->val=0; }// 0 ou 1 voisin vivant = meurt isolement
+		
+		else if(c->nbVoisins > 4){ c->val=0; }// plus de 4 voisins = meurt etouffement
+	}
+}
 
 int main(int argc, char *argv[])
 {
@@ -150,20 +166,38 @@ int main(int argc, char *argv[])
 
 	printf("Initilisation \n");
 	initialiserPlateau(&p);
-	afficherPlateau(p);
+	//afficherPlateau(p);
 
 	printf("\n\nRemplissage \n");
 	remplirPlateau(&p,nb);
 	afficherPlateau(p);
 
+	
+	//**************************************
+	//travaille qu'effectueras un thread
+	//****************************************
+	sousPlateau sp;
+	sp.matrice = p.matrice;// sous matrice reçoit une partie de la matrice
+	sp.tailleLigne = p.taille;
+	sp.tailleCol = p.taille;
+	
 	for(i=0; i<p.taille;i++){
 		for (j=0; j<p.taille;j++){
 			num_neigh[i][j]=nombreVoisinsVivants(p,p.matrice[i][j]);
-			printf("Cellule (%d,%d) %d voisins \n",i,j,num_neigh[i][j]);
+			p.matrice[i][j].nbVoisins = num_neigh[i][j];
+			miseAjourCellule(&sp,&sp.matrice[i][j]);
+			//printf("Cellule (%d,%d) %d voisins \n",i,j,p.matrice[i][j].nbVoisins);
 			
 		}
 	}
-
+	
+	p.matrice = sp.matrice;//mise ajour du plateau par sousPlateau
+	//***********************************************
+	//fin travail thread
+	//**************************************************
+	
+	printf("\n\nMise a jour \n");
+	afficherPlateau(p);
 
 	printf("\n\nLiberation plateau \n");
 	libererMatricePlateau(&p);
