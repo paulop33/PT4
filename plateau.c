@@ -4,8 +4,7 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <string.h>
-
-//#define LARGEUR_DAMIER 7
+#include "CONSTANTES.h"
 
 
 typedef struct Cellule Cellule;
@@ -23,7 +22,6 @@ struct Plateau
 {
 	Cellule ** matrice;
 	int taille;
-	//int ** num_neigh
 };
 
 typedef struct sousPlateau sousPlateau;
@@ -134,16 +132,16 @@ int nombreVoisinsVivants(Plateau p, Cellule c)
 
 void miseAjourCellule(sousPlateau *sp,Cellule *c)
 {
-	if(c->val == 0 && c->nbVoisins ==3)//si la cellule est morte et extactement 3 voisins vivants
+	if(c->val == 0 && c->nbVoisins == SEUIL_VIVANT)//si la cellule est morte et extactement 3 voisins vivants
 	{
 		c->val = 1;
 	}
 	
 	else if(c->val == 1)//si elle est vivante
 	{
-		if(c->nbVoisins < 2){ c->val=0; }// 0 ou 1 voisin vivant = meurt isolement
+		if(c->nbVoisins < SEUIL_MIN_MORT){ c->val=0; }// 0 ou 1 voisin vivant = meurt isolement
 		
-		else if(c->nbVoisins > 4){ c->val=0; }// plus de 4 voisins = meurt etouffement
+		else if(c->nbVoisins > SEUIL_MAX_MORT){ c->val=0; }// plus de 4 voisins = meurt etouffement
 	}
 }
 
@@ -185,25 +183,29 @@ int main(int argc, char *argv[])
 		for (j=0; j<p.taille;j++){
 			num_neigh[i][j]=nombreVoisinsVivants(p,p.matrice[i][j]);
 			p.matrice[i][j].nbVoisins = num_neigh[i][j];
-			miseAjourCellule(&sp,&sp.matrice[i][j]);
-			//printf("Cellule (%d,%d) %d voisins \n",i,j,p.matrice[i][j].nbVoisins);
+		
 			
 		}
 	}
 	
-	p.matrice = sp.matrice;//mise ajour du plateau par sousPlateau
+	for(i=0; i<p.taille;i++){
+		for (j=0; j<p.taille;j++){
+			miseAjourCellule(&sp,&sp.matrice[i][j]);
+			p.matrice = sp.matrice;//mise ajour du plateau par sousPlateau
+		}
+	}
+		
+	printf("\n\nMise a jour \n");
+	afficherPlateau(p);
+	
 	//***********************************************
 	//fin travail thread
 	//**************************************************
 	
-	printf("\n\nMise a jour \n");
-	afficherPlateau(p);
+
 
 	printf("\n\nLiberation plateau \n");
 	libererMatricePlateau(&p);
-
-
-
 
 
 
