@@ -192,10 +192,7 @@ int main(int argc, char *argv[])
 		}
 	}
 	
-	for(i=0; i<p.taille;i++){
-		for (j=0; j<p.taille;j++){
-			miseAjourCellule(&sp,&sp.matrice[i][j]);
-			p.matrice = sp.matrice;//mise ajour du plateau par sousPlateau
+	for(i=0; i00000000000000000000000trice = sp.matrice;//mise ajour du plateau par sousPlateau
 		}
 	}
 	//***********************************************
