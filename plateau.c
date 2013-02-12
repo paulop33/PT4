@@ -97,8 +97,9 @@ void remplirPlateau(Plateau *p,int nbCelluleVivante)
 		srand(time(NULL));
 			while(reste>0)
 			{
-				i=rand()%(p->taille);
-				j=rand()%(p->taille);
+				//[a;b] (b-a)+a <=> taille+1 -1
+				i=rand()%(p->taille)+1;
+				j=rand()%(p->taille)+1;
 				
 				if(p->matrice[i][j].val!=1)//si la valeur de la cellule n'est pas vivante
 				{
