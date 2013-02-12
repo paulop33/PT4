@@ -150,7 +150,7 @@ int main(int argc, char *argv[])
 	int nb;
 	int i,j;
 
-
+	//commentaire
 	printf("Largeur matrice : ");
 	scanf("%d",&nb); 
 	printf("Nombre total de cellules %d \n", nb*nb);
