@@ -76,8 +76,11 @@ void afficherPlateau(Plateau p){
 	int i,j;
 	for (i=0; i<p.taille+2;i++){
 		for (j=0; j<p.taille+2;j++)
-		{
-			printf("%d",p.matrice[i][j].val); 
+		{	
+			if (i!=0 && j!=0 && i!=p.taille+1 && j!=p.taille+1)
+				printf("%d",p.matrice[i][j].val); 
+			else
+			printf("X");
 		}
 		printf("\n"); 
 	}
@@ -118,15 +121,15 @@ int nombreVoisinsVivants(Plateau p, Cellule c)
 	int nbV = 0;
 	
 	if(c.posLigne > 0 && p.matrice[c.posLigne-1][c.posCol].val == 1){nbV++;}//haut
-	if(c.posLigne < p.taille-1 && p.matrice[c.posLigne+1][c.posCol].val == 1){nbV++;}//bas
+	if(c.posLigne < p.taille && p.matrice[c.posLigne+1][c.posCol].val == 1){nbV++;}//bas
 	if(c.posCol > 0 && p.matrice[c.posLigne][c.posCol-1].val == 1){nbV++;}//gauche
-	if(c.posCol < p.taille-1 && p.matrice[c.posLigne][c.posCol+1].val == 1){nbV++;}//droite
+	if(c.posCol < p.taille && p.matrice[c.posLigne][c.posCol+1].val == 1){nbV++;}//droite
 
 	if(c.posLigne > 0 && c.posCol > 0 && p.matrice[c.posLigne-1][c.posCol-1].val == 1){nbV++;}//haut-gauche
-	if(c.posLigne > 0 && c.posCol < p.taille-1 && p.matrice[c.posLigne-1][c.posCol+1].val == 1){nbV++;}//haut-droite
+	if(c.posLigne > 0 && c.posCol < p.taille && p.matrice[c.posLigne-1][c.posCol+1].val == 1){nbV++;}//haut-droite
 
-	if(c.posLigne < p.taille-1 && c.posCol > 0 && p.matrice[c.posLigne+1][c.posCol-1].val == 1){nbV++;}//bas-gauche
-	if(c.posLigne < p.taille-1 && c.posCol < p.taille && p.matrice[c.posLigne+1][c.posCol+1].val == 1){nbV++;}//bas-droite
+	if(c.posLigne < p.taille && c.posCol > 0 && p.matrice[c.posLigne+1][c.posCol-1].val == 1){nbV++;}//bas-gauche
+	if(c.posLigne < p.taille && c.posCol < p.taille && p.matrice[c.posLigne+1][c.posCol+1].val == 1){nbV++;}//bas-droite
 
 	return nbV;
 
@@ -191,9 +194,14 @@ int main(int argc, char *argv[])
 			p.matrice[i][j].nbVoisins = num_neigh[i][j];
 		}
 	}
-	
-	for(i=0; i<p.taille;i++){
-		for (j=0; j<p.taille;j++){
+	/*for(i=1; i<p.taille+1;i++){
+		for (j=1; j<p.taille+1;j++){
+			printf("%d",num_neigh[i][j]);
+		}
+		printf("\n");
+	}*/
+	for(i=1; i<p.taille+1;i++){
+		for (j=1; j<p.taille+1;j++){
 			miseAjourCellule(&sp,&sp.matrice[i][j]);
 			p.matrice = sp.matrice;//mise ajour du plateau par sousPlateau
 		}
