@@ -4,7 +4,6 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <string.h>
-#include <windows.h>
 #include "CONSTANTES.h"
 
 
@@ -44,8 +43,8 @@ void initialiserPlateau(Plateau *p)
 
 	for ( i = 0 ; i < p->taille+2 ; i ++ )
 	{
-		 /* allocation d'un tableau de tableau */
-		 p->matrice[i] = calloc ( (p->taille+2) , sizeof(Cellule) );
+		/* allocation d'un tableau de tableau */
+		p->matrice[i] = calloc ( (p->taille+2) , sizeof(Cellule) );
 	}
 
 	for(i=0; i< p->taille+2;i++){
@@ -55,7 +54,6 @@ void initialiserPlateau(Plateau *p)
 			p->matrice[i][j].posCol = j;
 		}
 	}
-
 }
 
 /*Libére la mémoire allouée pour la matrice du plateau*/
@@ -92,26 +90,23 @@ void remplirPlateau(Plateau *p,int nbCelluleVivante)
 	int maxCase = (p->taille*p->taille) ;
 	int i,j;
 
-
 	if(nbCelluleVivante <= maxCase )
 	{
 		srand(time(NULL));
-			while(reste>0)
-			{
-				//[a;b] (b-a)+a <=> taille+1 -1
-				i=rand()%(p->taille)+1;
-				j=rand()%(p->taille)+1;
+		while(reste>0)
+		{
+			//[a;b] (b-a)+a <=> taille+1 -1
+			i=rand()%(p->taille)+1;
+			j=rand()%(p->taille)+1;
 
-				if(p->matrice[i][j].val!=1)//si la valeur de la cellule n'est pas vivante
-				{
-					p->matrice[i][j].val=1;
-					reste--;
-				}
+			if(p->matrice[i][j].val!=1)//si la valeur de la cellule n'est pas vivante
+			{
+				p->matrice[i][j].val=1;
+				reste--;
 			}
 		}
-
+	}
 	else {printf("Désolé nombre de celulle trop grand \n");}
-
 }
 
 int nombreVoisinsVivants(Plateau p, Cellule c)
@@ -122,15 +117,12 @@ int nombreVoisinsVivants(Plateau p, Cellule c)
 	if(c.posLigne < p.taille && p.matrice[c.posLigne+1][c.posCol].val == 1){nbV++;}//bas
 	if(c.posCol > 0 && p.matrice[c.posLigne][c.posCol-1].val == 1){nbV++;}//gauche
 	if(c.posCol < p.taille && p.matrice[c.posLigne][c.posCol+1].val == 1){nbV++;}//droite
-
 	if(c.posLigne > 0 && c.posCol > 0 && p.matrice[c.posLigne-1][c.posCol-1].val == 1){nbV++;}//haut-gauche
 	if(c.posLigne > 0 && c.posCol < p.taille && p.matrice[c.posLigne-1][c.posCol+1].val == 1){nbV++;}//haut-droite
-
 	if(c.posLigne < p.taille && c.posCol > 0 && p.matrice[c.posLigne+1][c.posCol-1].val == 1){nbV++;}//bas-gauche
 	if(c.posLigne < p.taille && c.posCol < p.taille && p.matrice[c.posLigne+1][c.posCol+1].val == 1){nbV++;}//bas-droite
 
 	return nbV;
-
 }
 
 void miseAjourCellule(sousPlateau *sp,Cellule *c)
@@ -139,11 +131,9 @@ void miseAjourCellule(sousPlateau *sp,Cellule *c)
 	{
 		c->val = 1;
 	}
-
 	else if(c->val == 1)//si elle est vivante
 	{
 		if(c->nbVoisins < SEUIL_MIN_MORT){ c->val=0; }// 0 ou 1 voisin vivant = meurt isolement
-
 		else if(c->nbVoisins > SEUIL_MAX_MORT){ c->val=0; }// plus de 4 voisins = meurt etouffement
 	}
 }
@@ -159,7 +149,6 @@ void copieDesBords(Plateau p){
 		p.matrice[i][0].val=p.matrice[i][p.taille].val;
 		p.matrice[i][p.taille+1].val=p.matrice[i][1].val;
 	}
-
 }
 
 int main(int argc, char *argv[])
@@ -170,7 +159,7 @@ int main(int argc, char *argv[])
 	//commentaire
 	printf("Largeur matrice : ");
 	//scanf("%d",&nb);
-	nb=20;
+	nb=LARGEUR_PLATEAU;
 	printf("Nombre total de cellules %d \n", nb*nb);
 
 	Plateau p;
@@ -179,7 +168,8 @@ int main(int argc, char *argv[])
 
 	printf("Nombre de cellule vivantes : ");
 	//scanf("%d",&nb);
-          nb=30;
+    nb=NB_CELLULE_VIVANTE_DEPART;
+    
 	printf("Initilisation \n");
 	initialiserPlateau(&p);
 	//afficherPlateau(p);
@@ -196,24 +186,26 @@ int main(int argc, char *argv[])
 	sp.matrice = p.matrice;// sous matrice reçoit une partie de la matrice
 	sp.tailleLigne = p.taille;
 	sp.tailleCol = p.taille;
-
-          while (1){
-                    copieDesBords(p);
-                    for(i=1; i<p.taille+1;i++){
-                              for (j=1; j<p.taille+1;j++){
-                                        num_neigh[i][j]=nombreVoisinsVivants(p,p.matrice[i][j]);
-                                        p.matrice[i][j].nbVoisins = num_neigh[i][j];
-                              }
-                    }
-                    for(i=1; i<p.taille+1;i++){
-                              for (j=1; j<p.taille+1;j++){
-                                        miseAjourCellule(&sp,&sp.matrice[i][j]);
-                              }
-                    }
-                    p.matrice = sp.matrice;//mise ajour du plateau par sousPlateau
-                    afficherPlateau(p);
-                    Sleep(1000);
-          }
+	int numTour=0;
+  	while (numTour<NB_TOUR){
+		numTour++;
+	    copieDesBords(p);
+	    for(i=1; i<p.taille+1;i++){
+			for (j=1; j<p.taille+1;j++){
+			    num_neigh[i][j]=nombreVoisinsVivants(p,p.matrice[i][j]);
+		        p.matrice[i][j].nbVoisins = num_neigh[i][j];
+			}
+	    }
+	    for(i=1; i<p.taille+1;i++){
+          	for (j=1; j<p.taille+1;j++){
+            	miseAjourCellule(&sp,&sp.matrice[i][j]);
+			}
+	    }
+	    p.matrice = sp.matrice;//mise ajour du plateau par sousPlateau
+	    //~ afficherPlateau(p);
+	    printf("%d\n",numTour);
+	    //~ usleep(1000);
+	}
 
 	//***********************************************
 	//fin travail thread
