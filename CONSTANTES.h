@@ -6,7 +6,7 @@
 	#define SEUIL_MIN_MORT 2
 	#define SEUIL_VIVANT 3
 	#define NB_TOUR 1000
-	#define LARGEUR_PLATEAU 20
-	#define NB_CELLULE_VIVANTE_DEPART 50
-
+	#define LARGEUR_PLATEAU 500
+	#define NB_CELLULE_VIVANTE_DEPART 5000
+	#define NB_THREADS 4 /* Nombre de threads */
 #endif 

@@ -7,6 +7,10 @@
 #include "CONSTANTES.h"
 
 
+/* Le nombre de thread lancee */ 
+static int nbThreadLance=0; 
+
+
 typedef struct Cellule Cellule;
 struct Cellule
 {
@@ -23,14 +27,6 @@ struct Plateau
 	Cellule ** matrice;
 	int taille;
 	//int ** num_neigh
-};
-
-typedef struct sousPlateau sousPlateau;
-struct sousPlateau
-{
-	Cellule ** matrice;
-	int tailleLigne;
-	int tailleCol;
 };
 
 /*Mettre toutes les cellules a 0*/
@@ -125,7 +121,7 @@ int nombreVoisinsVivants(Plateau p, Cellule c)
 	return nbV;
 }
 
-void miseAjourCellule(sousPlateau *sp,Cellule *c)
+void miseAjourCellule(Cellule *c)
 {
 	if(c->val == 0 && c->nbVoisins == SEUIL_VIVANT)//si la cellule est morte et extactement 3 voisins vivants
 	{
@@ -150,12 +146,52 @@ void copieDesBords(Plateau p){
 		p.matrice[i][p.taille+1].val=p.matrice[i][1].val;
 	}
 }
+/* Fonction executée par un thread */ 
+void * thread(){
+	
+	int debutLigneTraitement=0; // ligne à partir de laquelle le thread va commencer son traitement
+	int finTraitement; // ligne à laquelle le thread le thread arrete son traitement (cette ligne n'est pas compris)
+	int numThread; // numero du thread
+	numThread=nbThreadLance;
+	nbThreadLance++;
+	
+	debutLigneTraitement=numThread*(LARGEUR_PLATEAU/NB_THREADS);
+	finTraitement=debutLigneTraitement+1+(LARGEUR_PLATEAU/NB_THREADS);
+	
+	int numTour=0; /** Nombre de tour */
+	while (numTour<NB_TOUR){
+		numTour++;
+		if (numThread==0) //si c'est le premier thread => nouvelle itération
+			copieDesBords(p);
+			
+	    for(i = debutLigneTraitement+1; i< finTraitement ; i++){
+			for (j=1; j<p.taille+1;j++){
+			    num_neigh[i][j]=nombreVoisinsVivants(p,p.matrice[i][j]);
+		        p.matrice[i][j].nbVoisins = num_neigh[i][j];
+			}
+	    }
+	    // Chaque thread doit attendre que les autres aient terminé le calcul des voisins
+	    
+	    for(i=1; i<p.taille+1;i++){
+          	for (j=1; j<p.taille+1;j++){
+            	miseAjourCellule(&p.matrice[i][j]);
+			}
+	    }
+	    //~ afficherPlateau(p);
+	    printf("%d\n",numTour);
+	    //~ usleep(1000);
+	}
+	return NULL;
+}
 
 int main(int argc, char *argv[])
 {
 	int nb;
 	int i,j;
-
+	
+	//on déclare les threads
+	pthread_t th[NB_THREADS];
+	
 	//commentaire
 	printf("Largeur matrice : ");
 	//scanf("%d",&nb);
@@ -180,39 +216,25 @@ int main(int argc, char *argv[])
 
 
 	//**************************************
-	//travaille qu'effectuera un thread
+	// Lancement des Threads
 	//****************************************
-	sousPlateau sp;
-	sp.matrice = p.matrice;// sous matrice reçoit une partie de la matrice
-	sp.tailleLigne = p.taille;
-	sp.tailleCol = p.taille;
-	int numTour=0;
-  	while (numTour<NB_TOUR){
-		numTour++;
-	    copieDesBords(p);
-	    for(i=1; i<p.taille+1;i++){
-			for (j=1; j<p.taille+1;j++){
-			    num_neigh[i][j]=nombreVoisinsVivants(p,p.matrice[i][j]);
-		        p.matrice[i][j].nbVoisins = num_neigh[i][j];
-			}
-	    }
-	    for(i=1; i<p.taille+1;i++){
-          	for (j=1; j<p.taille+1;j++){
-            	miseAjourCellule(&sp,&sp.matrice[i][j]);
-			}
-	    }
-	    p.matrice = sp.matrice;//mise ajour du plateau par sousPlateau
-	    //~ afficherPlateau(p);
-	    printf("%d\n",numTour);
-	    //~ usleep(1000);
+	int ret; // valeur de retour lors de la création d'un thread
+	for(i=0;i<NB_THREADS;i++){
+		ret = pthread_create(&(th[i]), NULL, thread, NULL);
+		if(ret) {
+			fprintf(stderr, "Impossible de créer le thread %d\n", i);
+			return 1;
+		}
 	}
+
+
 
 	//***********************************************
 	//fin travail thread
 	//**************************************************
 
 	printf("\n\nMise a jour \n");
-	afficherPlateau(p);
+	//~ afficherPlateau(p);
 
 	printf("\n\nLiberation plateau \n");
 	libererMatricePlateau(&p);
