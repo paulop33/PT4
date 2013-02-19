@@ -7,8 +7,11 @@
 #include "CONSTANTES.h"
 
 
-/* Le nombre de thread lancee */ 
-static int nbThreadLance=0; 
+static int nbThreadLance=0;  /* Le nombre de thread lancee */ 
+static pthread_mutex_t m1; /*  Mutex pour bloquer lors de la numérotation des threads */
+/* Mutex pour bloquer attendre que le calcul des voisins soit effectué par tous les threads 
+avant de commencer à traiter la mise à jour des cellules */
+static pthread_mutex_t m2; 
 
 
 typedef struct Cellule Cellule;
@@ -26,8 +29,10 @@ struct Plateau
 {
 	Cellule ** matrice;
 	int taille;
-	//int ** num_neigh
+
 };
+
+static Plateau p;
 
 /*Mettre toutes les cellules a 0*/
 void initialiserPlateau(Plateau *p)
@@ -148,31 +153,34 @@ void copieDesBords(Plateau p){
 }
 /* Fonction executée par un thread */ 
 void * thread(){
-	
 	int debutLigneTraitement=0; // ligne à partir de laquelle le thread va commencer son traitement
 	int finTraitement; // ligne à laquelle le thread le thread arrete son traitement (cette ligne n'est pas compris)
 	int numThread; // numero du thread
+	
+	// On bloque avec un mutex afin qu'un thread n'est pas le num d'un autre
+	pthread_mutex_lock(&m1); 
 	numThread=nbThreadLance;
 	nbThreadLance++;
+	pthread_mutex_unlock(&m1);
 	
 	debutLigneTraitement=numThread*(LARGEUR_PLATEAU/NB_THREADS);
 	finTraitement=debutLigneTraitement+1+(LARGEUR_PLATEAU/NB_THREADS);
 	
 	int numTour=0; /** Nombre de tour */
+	int i,j;
 	while (numTour<NB_TOUR){
 		numTour++;
 		if (numThread==0) //si c'est le premier thread => nouvelle itération
 			copieDesBords(p);
 			
 	    for(i = debutLigneTraitement+1; i< finTraitement ; i++){
-			for (j=1; j<p.taille+1;j++){
-			    num_neigh[i][j]=nombreVoisinsVivants(p,p.matrice[i][j]);
-		        p.matrice[i][j].nbVoisins = num_neigh[i][j];
+			for (j=1; j<p.taille+1;j++){    
+		        p.matrice[i][j].nbVoisins = nombreVoisinsVivants(p,p.matrice[i][j]);
 			}
 	    }
 	    // Chaque thread doit attendre que les autres aient terminé le calcul des voisins
 	    
-	    for(i=1; i<p.taille+1;i++){
+	    for(i=debutLigneTraitement+1; i< finTraitement ;i++){
           	for (j=1; j<p.taille+1;j++){
             	miseAjourCellule(&p.matrice[i][j]);
 			}
@@ -186,11 +194,14 @@ void * thread(){
 
 int main(int argc, char *argv[])
 {
-	int nb;
-	int i,j;
+	int nb,i;
 	
 	//on déclare les threads
 	pthread_t th[NB_THREADS];
+
+	/** Initialisation des mutex */
+	pthread_mutex_init(&m1,NULL);
+	pthread_mutex_init(&m2,NULL);
 	
 	//commentaire
 	printf("Largeur matrice : ");
@@ -198,10 +209,7 @@ int main(int argc, char *argv[])
 	nb=LARGEUR_PLATEAU;
 	printf("Nombre total de cellules %d \n", nb*nb);
 
-	Plateau p;
 	p.taille = nb;
-	int num_neigh[p.taille+2][p.taille+2];
-
 	printf("Nombre de cellule vivantes : ");
 	//scanf("%d",&nb);
     nb=NB_CELLULE_VIVANTE_DEPART;
@@ -220,14 +228,22 @@ int main(int argc, char *argv[])
 	//****************************************
 	int ret; // valeur de retour lors de la création d'un thread
 	for(i=0;i<NB_THREADS;i++){
-		ret = pthread_create(&(th[i]), NULL, thread, NULL);
+		ret = pthread_create(&(th[i]), NULL, thread,NULL);
 		if(ret) {
 			fprintf(stderr, "Impossible de créer le thread %d\n", i);
 			return 1;
 		}
 	}
 
-
+	void *ret_val;
+	for(i=0;i<NB_THREADS;i++) 
+	{
+		int ret = pthread_join(th[i], &ret_val);
+		if(ret) {
+			fprintf(stderr, "Erreur lors de l'attente du thread %d\n", i);
+			return 1;
+		}
+	}
 
 	//***********************************************
 	//fin travail thread
@@ -236,6 +252,10 @@ int main(int argc, char *argv[])
 	printf("\n\nMise a jour \n");
 	//~ afficherPlateau(p);
 
+	/** Destruction des mutex */
+	pthread_mutex_destroy(&m1);
+	pthread_mutex_destroy(&m2);
+	
 	printf("\n\nLiberation plateau \n");
 	libererMatricePlateau(&p);
 
