@@ -9,10 +9,15 @@
 
 static int nbThreadLance=0;  /* Le nombre de thread lancee */ 
 static pthread_mutex_t m1; /*  Mutex pour bloquer lors de la numérotation des threads */
-/* Mutex pour bloquer attendre que le calcul des voisins soit effectué par tous les threads 
+/* Mutex pour attendre que le calcul des voisins soit effectué par tous les threads 
 avant de commencer à traiter la mise à jour des cellules */
-static pthread_mutex_t m2; 
-
+static pthread_mutex_t attente_tous_les_threads; 
+static pthread_mutex_t attente_pour_copie; 
+/* Condition d'attente des threads après calcul du nombre de voisin*/
+static pthread_cond_t cond_attente_de_tous_les_threads;
+static pthread_cond_t cond_attente_pour_copie;
+static int threadArrive=0; // nombre de thread qui a termine de calculer le nombre de voisins
+static int threadAttenteCopie=0; // nombre de thread qui attende la copie des bords
 
 typedef struct Cellule Cellule;
 struct Cellule
@@ -34,7 +39,9 @@ struct Plateau
 
 static Plateau p;
 
-/*Mettre toutes les cellules a 0*/
+/**
+* Creation des cellules 
+*/
 void initialiserPlateau(Plateau *p)
 {
 	int i,j;
@@ -57,7 +64,9 @@ void initialiserPlateau(Plateau *p)
 	}
 }
 
-/*Libére la mémoire allouée pour la matrice du plateau*/
+/**
+* Libére la mémoire allouée pour la matrice du plateau
+*/
 void libererMatricePlateau(Plateau *p)
 {
 	int i;
@@ -65,13 +74,14 @@ void libererMatricePlateau(Plateau *p)
 	{
 		free(p->matrice[i]);
 	}
-
 	free(p->matrice);
 	p->matrice = NULL;
 }
 
 
-/*Affiche le plateau*/
+/**
+* Affiche le plateau dans le terminal
+*/
 void afficherPlateau(Plateau p){
 	int i,j;
 	for (i=0; i<p.taille+2;i++){
@@ -84,7 +94,9 @@ void afficherPlateau(Plateau p){
 	printf("\n");
 }
 
-/*Crée des cellules vivantes selon le nombre rentré*/
+/**
+* Crée des cellules vivantes selon le nombre rentré
+*/
 void remplirPlateau(Plateau *p,int nbCelluleVivante)
 {
 	int reste = nbCelluleVivante;
@@ -110,6 +122,9 @@ void remplirPlateau(Plateau *p,int nbCelluleVivante)
 	else {printf("Désolé nombre de celulle trop grand \n");}
 }
 
+/**
+* return nombre de voisin de la cellule passee en parametre
+*/
 int nombreVoisinsVivants(Plateau p, Cellule c)
 {
 	int nbV = 0;
@@ -126,6 +141,9 @@ int nombreVoisinsVivants(Plateau p, Cellule c)
 	return nbV;
 }
 
+/**
+* Met a jour la cellule passee en parametre
+*/
 void miseAjourCellule(Cellule *c)
 {
 	if(c->val == 0 && c->nbVoisins == SEUIL_VIVANT)//si la cellule est morte et extactement 3 voisins vivants
@@ -138,6 +156,10 @@ void miseAjourCellule(Cellule *c)
 		else if(c->nbVoisins > SEUIL_MAX_MORT){ c->val=0; }// plus de 4 voisins = meurt etouffement
 	}
 }
+
+/**
+* Copie les bords ainsi que les coins a l'oppose
+*/
 void copieDesBords(Plateau p){
 	int i=0;
 	p.matrice[0][0].val=p.matrice[p.taille][p.taille].val;
@@ -151,12 +173,14 @@ void copieDesBords(Plateau p){
 		p.matrice[i][p.taille+1].val=p.matrice[i][1].val;
 	}
 }
-/* Fonction executée par un thread */ 
+/**
+* Fonction executée par un thread 
+*/ 
 void * thread(){
 	int debutLigneTraitement=0; // ligne à partir de laquelle le thread va commencer son traitement
 	int finTraitement; // ligne à laquelle le thread le thread arrete son traitement (cette ligne n'est pas compris)
 	int numThread; // numero du thread
-	
+
 	// On bloque avec un mutex afin qu'un thread n'est pas le num d'un autre
 	pthread_mutex_lock(&m1); 
 	numThread=nbThreadLance;
@@ -165,63 +189,79 @@ void * thread(){
 	
 	debutLigneTraitement=numThread*(LARGEUR_PLATEAU/NB_THREADS);
 	finTraitement=debutLigneTraitement+1+(LARGEUR_PLATEAU/NB_THREADS);
-	
-	int numTour=0; /** Nombre de tour */
+
+	static int numTour=0; /** Nombre de tour */
 	int i,j;
 	while (numTour<NB_TOUR){
-		numTour++;
-		if (numThread==0) //si c'est le premier thread => nouvelle itération
-			copieDesBords(p);
-			
+	    pthread_mutex_lock(&attente_pour_copie); 
+	    threadArrive++;
+	    if (threadArrive==NB_THREADS){ // le dernier des threads lance ce if
+			copieDesBords(p); //on peut copier les bords car on n'affiche pas les bords
+	    	threadArrive=0;
+	    	pthread_cond_broadcast(&cond_attente_pour_copie);
+	    }
+	    else pthread_cond_wait(&cond_attente_pour_copie,&attente_pour_copie);
+    	pthread_mutex_unlock(&attente_pour_copie);
+	    
+		// Calcul du nombre de voisins pour chaque cellule
 	    for(i = debutLigneTraitement+1; i< finTraitement ; i++){
 			for (j=1; j<p.taille+1;j++){    
 		        p.matrice[i][j].nbVoisins = nombreVoisinsVivants(p,p.matrice[i][j]);
 			}
 	    }
 	    // Chaque thread doit attendre que les autres aient terminé le calcul des voisins
+	    pthread_mutex_lock(&attente_tous_les_threads); 
+	    threadArrive++;
+	    if (threadArrive==NB_THREADS){ // le dernier des threads lance ce if
+			numTour++;	
+			copieDesBords(p); //on peut copier les bords car on n'affiche pas les bords
+	    	threadArrive=0;
+	    	pthread_cond_broadcast(&cond_attente_de_tous_les_threads);
+	    }
+	    else pthread_cond_wait(&cond_attente_de_tous_les_threads,&attente_tous_les_threads);
 	    
+    	pthread_mutex_unlock(&attente_tous_les_threads);
+    
 	    for(i=debutLigneTraitement+1; i< finTraitement ;i++){
           	for (j=1; j<p.taille+1;j++){
             	miseAjourCellule(&p.matrice[i][j]);
 			}
 	    }
-	    //~ afficherPlateau(p);
-	    printf("%d\n",numTour);
-	    //~ usleep(1000);
+	    printf("%d\n", numTour);
 	}
+	pthread_cond_broadcast(&cond_attente_de_tous_les_threads);
+	pthread_exit(0);
 	return NULL;
 }
 
 int main(int argc, char *argv[])
 {
-	int nb,i;
+	int i;
 	
 	//on déclare les threads
 	pthread_t th[NB_THREADS];
 
-	/** Initialisation des mutex */
+	// Initialisation des mutex 
 	pthread_mutex_init(&m1,NULL);
-	pthread_mutex_init(&m2,NULL);
+	pthread_mutex_init(&attente_tous_les_threads,NULL);
+	pthread_mutex_init(&attente_pour_copie,NULL);
+	// Initialisation condition de verrou
+	pthread_cond_init(&cond_attente_de_tous_les_threads,NULL);
+	pthread_cond_init(&cond_attente_pour_copie,NULL);
 	
-	//commentaire
 	printf("Largeur matrice : ");
-	//scanf("%d",&nb);
-	nb=LARGEUR_PLATEAU;
-	printf("Nombre total de cellules %d \n", nb*nb);
+	printf("Nombre total de cellules %d \n", LARGEUR_PLATEAU*LARGEUR_PLATEAU);
 
-	p.taille = nb;
-	printf("Nombre de cellule vivantes : ");
-	//scanf("%d",&nb);
-    nb=NB_CELLULE_VIVANTE_DEPART;
+	p.taille = LARGEUR_PLATEAU;
+	printf("Nombre de cellule vivantes : %d",NB_CELLULE_VIVANTE_DEPART);
     
 	printf("Initilisation \n");
 	initialiserPlateau(&p);
 	//afficherPlateau(p);
 
 	printf("\n\nRemplissage \n");
-	remplirPlateau(&p,nb);
+	remplirPlateau(&p,NB_CELLULE_VIVANTE_DEPART);
 	//afficherPlateau(p);
-
 
 	//**************************************
 	// Lancement des Threads
@@ -235,6 +275,9 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	//**************************************
+	// Attente des Threads
+	//****************************************
 	void *ret_val;
 	for(i=0;i<NB_THREADS;i++) 
 	{
@@ -254,8 +297,12 @@ int main(int argc, char *argv[])
 
 	/** Destruction des mutex */
 	pthread_mutex_destroy(&m1);
-	pthread_mutex_destroy(&m2);
-	
+	pthread_mutex_destroy(&attente_tous_les_threads);
+	pthread_mutex_destroy(&attente_pour_copie);
+	// Destruction condition de verrou
+	pthread_cond_destroy(&cond_attente_de_tous_les_threads);
+	pthread_cond_destroy(&cond_attente_pour_copie);
+
 	printf("\n\nLiberation plateau \n");
 	libererMatricePlateau(&p);
 
