@@ -8,14 +8,13 @@
 
 
 static int nbThreadLance=0;  /* Le nombre de thread lancee */ 
-static pthread_mutex_t m1; /*  Mutex pour bloquer lors de la numérotation des threads */
-/* Mutex pour attendre que le calcul des voisins soit effectué par tous les threads 
-avant de commencer à traiter la mise à jour des cellules */
+/** Mutex  */
 static pthread_mutex_t attente_tous_les_threads; 
 static pthread_mutex_t attente_pour_copie; 
 /* Condition d'attente des threads après calcul du nombre de voisin*/
 static pthread_cond_t cond_attente_de_tous_les_threads;
 static pthread_cond_t cond_attente_pour_copie;
+static pthread_barrier_t barriere;
 static int threadArrive=0; // nombre de thread qui a termine de calculer le nombre de voisins
 static int threadAttenteCopie=0; // nombre de thread qui attende la copie des bords
 
@@ -176,17 +175,12 @@ void copieDesBords(Plateau p){
 /**
 * Fonction executée par un thread 
 */ 
-void * thread(){
+void * thread(void *numeroThread){
 	int debutLigneTraitement=0; // ligne à partir de laquelle le thread va commencer son traitement
 	int finTraitement; // ligne à laquelle le thread le thread arrete son traitement (cette ligne n'est pas compris)
-	int numThread; // numero du thread
-
+	int numThread=(int)numeroThread; // numero du thread
 	// On bloque avec un mutex afin qu'un thread n'est pas le num d'un autre
-	pthread_mutex_lock(&m1); 
-	numThread=nbThreadLance;
-	nbThreadLance++;
-	pthread_mutex_unlock(&m1);
-	
+
 	debutLigneTraitement=numThread*(LARGEUR_PLATEAU/NB_THREADS);
 	finTraitement=debutLigneTraitement+1+(LARGEUR_PLATEAU/NB_THREADS);
 
@@ -214,7 +208,6 @@ void * thread(){
 	    threadArrive++;
 	    if (threadArrive==NB_THREADS){ // le dernier des threads lance ce if
 			numTour++;	
-			copieDesBords(p); //on peut copier les bords car on n'affiche pas les bords
 	    	threadArrive=0;
 	    	pthread_cond_broadcast(&cond_attente_de_tous_les_threads);
 	    }
@@ -229,7 +222,6 @@ void * thread(){
 	    }
 	    printf("%d\n", numTour);
 	}
-	pthread_cond_broadcast(&cond_attente_de_tous_les_threads);
 	pthread_exit(0);
 	return NULL;
 }
@@ -242,9 +234,10 @@ int main(int argc, char *argv[])
 	pthread_t th[NB_THREADS];
 
 	// Initialisation des mutex 
-	pthread_mutex_init(&m1,NULL);
 	pthread_mutex_init(&attente_tous_les_threads,NULL);
 	pthread_mutex_init(&attente_pour_copie,NULL);
+	// Initialisation de la bariere
+	int pthread_barrier_init(&barriere,NULL, NB_THREADS);
 	// Initialisation condition de verrou
 	pthread_cond_init(&cond_attente_de_tous_les_threads,NULL);
 	pthread_cond_init(&cond_attente_pour_copie,NULL);
@@ -268,7 +261,7 @@ int main(int argc, char *argv[])
 	//****************************************
 	int ret; // valeur de retour lors de la création d'un thread
 	for(i=0;i<NB_THREADS;i++){
-		ret = pthread_create(&(th[i]), NULL, thread,NULL);
+		ret = pthread_create(&(th[i]), NULL, thread,(void *)i);
 		if(ret) {
 			fprintf(stderr, "Impossible de créer le thread %d\n", i);
 			return 1;
@@ -292,13 +285,12 @@ int main(int argc, char *argv[])
 	//fin travail thread
 	//**************************************************
 
-	printf("\n\nMise a jour \n");
-	//~ afficherPlateau(p);
 
 	/** Destruction des mutex */
-	pthread_mutex_destroy(&m1);
 	pthread_mutex_destroy(&attente_tous_les_threads);
 	pthread_mutex_destroy(&attente_pour_copie);
+	// Destruction de la barriere
+	pthread_barrier_destroy(&barriere);
 	// Destruction condition de verrou
 	pthread_cond_destroy(&cond_attente_de_tous_les_threads);
 	pthread_cond_destroy(&cond_attente_pour_copie);
