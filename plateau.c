@@ -77,16 +77,32 @@ void libererMatricePlateau(Plateau *p)
 	p->matrice = NULL;
 }
 
-
 /**
 * Affiche le plateau dans le terminal
 */
 void afficherPlateau(Plateau p){
-	int i,j;
+	/*int i,j;
 	for (i=0; i<p.taille+2;i++){
 		for (j=0; j<p.taille+2;j++)
 		{
 			printf("%d",p.matrice[i][j].val);
+		}
+		printf("\n");
+	}
+	printf("\n");*/
+	int i,j;
+	//system("clear");
+	for (i=0; i<p.taille+2;i++){
+		if(i== p.taille+1){printf("_____________\n");}
+		if(i== 1){printf("____________\n");}
+
+		for (j=0; j<p.taille+2;j++)
+		{
+			if(j== p.taille+1){printf(" |");}
+			
+			printf("%d",p.matrice[i][j].val);
+			
+			if(j== 0){ printf(" |");}
 		}
 		printf("\n");
 	}
@@ -181,8 +197,15 @@ void * thread(void *numeroThread){
 	int numThread=(int)numeroThread; // numero du thread
 	// On bloque avec un mutex afin qu'un thread n'est pas le num d'un autre
 
-	debutLigneTraitement=numThread*(LARGEUR_PLATEAU/NB_THREADS);
-	finTraitement=debutLigneTraitement+1+(LARGEUR_PLATEAU/NB_THREADS);
+	debutLigneTraitement=numThread*(LARGEUR_PLATEAU/NB_THREADS)+1;
+	finTraitement=debutLigneTraitement+(LARGEUR_PLATEAU/NB_THREADS);
+	
+	if(numThread == NB_THREADS - 1)//si dernier thread
+	{
+		finTraitement+= LARGEUR_PLATEAU%NB_THREADS;
+	}
+	
+//	printf("\nNum thread : %d  [%d;%d[",numThread,debutLigneTraitement,finTraitement);
 
 	static int numTour=0; /** Nombre de tour */
 	int i,j;
@@ -191,6 +214,7 @@ void * thread(void *numeroThread){
 	    threadArrive++;
 	    if (threadArrive==NB_THREADS){ // le dernier des threads lance ce if
 			copieDesBords(p); //on peut copier les bords car on n'affiche pas les bords
+			afficherPlateau(p);
 	    	threadArrive=0;
 	    	pthread_cond_broadcast(&cond_attente_pour_copie);
 	    }
@@ -198,7 +222,7 @@ void * thread(void *numeroThread){
     	pthread_mutex_unlock(&attente_pour_copie);
 	    
 		// Calcul du nombre de voisins pour chaque cellule
-	    for(i = debutLigneTraitement+1; i< finTraitement ; i++){
+	    for(i = debutLigneTraitement; i< finTraitement ; i++){
 			for (j=1; j<p.taille+1;j++){    
 		        p.matrice[i][j].nbVoisins = nombreVoisinsVivants(p,p.matrice[i][j]);
 			}
@@ -215,12 +239,12 @@ void * thread(void *numeroThread){
 	    
     	pthread_mutex_unlock(&attente_tous_les_threads);
     
-	    for(i=debutLigneTraitement+1; i< finTraitement ;i++){
+	    for(i=debutLigneTraitement; i< finTraitement ;i++){
           	for (j=1; j<p.taille+1;j++){
             	miseAjourCellule(&p.matrice[i][j]);
 			}
 	    }
-	    printf("%d\n", numTour);
+	   // printf("%d\n", numTour);
 	}
 	pthread_exit(0);
 	return NULL;
@@ -237,7 +261,7 @@ int main(int argc, char *argv[])
 	pthread_mutex_init(&attente_tous_les_threads,NULL);
 	pthread_mutex_init(&attente_pour_copie,NULL);
 	// Initialisation de la bariere
-	int pthread_barrier_init(&barriere,NULL, NB_THREADS);
+	//int pthread_barrier_init(&barriere,NULL, NB_THREADS);
 	// Initialisation condition de verrou
 	pthread_cond_init(&cond_attente_de_tous_les_threads,NULL);
 	pthread_cond_init(&cond_attente_pour_copie,NULL);
