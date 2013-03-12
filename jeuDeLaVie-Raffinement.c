@@ -4,6 +4,8 @@
 #include <pthread.h>
 #include <semaphore.h>
 #include "CONSTANTES.h"
+static int NB_THREADS=4; /* Nombre de threads */
+static int NB_TOUR=5;
 
 
 /* Les semaphores pour un blocage local (juste autour de notre thread)*/
@@ -175,6 +177,9 @@ void copieDesBords(Plateau p,int debutLigneTraitement, int finTraitement, int nu
 void * thread(void *numeroThread){
 	// numero du thread
 	int numThread=(int)numeroThread; 
+	//variable pour la stagnation
+	int nb_cellule_bord_vivante=0;
+	int nb_cellule_inter_change=0;
 	
 	// ligne à partir de laquelle le thread va commencer son traitement
 	int debutLigneTraitement= debutLigneTraitement= numThread *(LARGEUR_PLATEAU / NB_THREADS)+1;
@@ -187,18 +192,25 @@ void * thread(void *numeroThread){
 	
 	int precedent= (numThread==0) ? NB_THREADS-1 : numThread - 1;
 	int suivant= (numThread==NB_THREADS-1) ? 0 : numThread + 1;
-	static int numTour=0; /** Nombre de tour */
+	int numTour=0; /** Nombre de tour *4 */
 	int i,j;
-	while ((numTour / 4) < NB_TOUR){
-		numTour++;
+	for (numTour = 0; i < NB_TOUR; i++)
+	 {
 		copieDesBords(p,debutLigneTraitement,finTraitement,numThread);
 		//afficherPlateau(p);
 
-		// Barrière "locale" (après copie / avant calcul voisin)
+	    //Copie des bords "extérieur" qui ont une insidence sur le thread courant
+	    p.matrice[debutLigneTraitement][0].val = p.matrice[debutLigneTraitement][p.taille].val;     
+	    p.matrice[debutLigneTraitement][p.taille+1].val = p.matrice[debutLigneTraitement][1].val;
+	    p.matrice[finTraitement-1][0].val = p.matrice[finTraitement-1][p.taille].val;     
+	    p.matrice[finTraitement-1][p.taille+1].val = p.matrice[finTraitement-1][1].val;
+
+		// On previent les voisins que les copies des bords indispensables pour leurs calculs sont terminees
 	    sem_post(&sem_apres_copie[suivant]);
 	    sem_post(&sem_apres_copie[precedent]);
-		for (i = debutLigneTraitement; i <finTraitement ; i++)
-		{
+
+		for (i = debutLigneTraitement+1; i <finTraitement-1 ; i++)
+		{ // on copie les bords internes (qui n'ont pas de conséquence sur les calculs des autres threads)
 			p.matrice[i][0].val=p.matrice[i][p.taille].val;	 //gauche
 			p.matrice[i][p.taille+1].val=p.matrice[i][1].val; //droite
 		}
@@ -237,7 +249,7 @@ void * thread(void *numeroThread){
 int main(int argc, char *argv[])
 {
 	int i;
-	if (argc != 3){
+	if (argc == 3){
   		NB_TOUR = atoi(argv[1]);
   		NB_THREADS = atoi(argv[2]);
 	}
@@ -261,7 +273,6 @@ int main(int argc, char *argv[])
 	//Remplissage
 	remplirPlateau(&p,NB_CELLULE_VIVANTE_DEPART);
 	//afficherPlateau(p);
-	printf("\n\nLancement des threads \n");
 
 	//**************************************
 	// Lancement des Threads

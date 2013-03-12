@@ -4,7 +4,8 @@
 #include <pthread.h>
 #include <semaphore.h>
 #include "CONSTANTES.h"
-
+static int NB_THREADS=4; /* Nombre de threads */
+static int NB_TOUR=5;
  
 /* La barrière utilisée à chaque fin de boucle des threads */
 static pthread_barrier_t barriere;
@@ -196,7 +197,7 @@ void * thread(void *numeroThread){
 	int precedent= (numThread==0) ? NB_THREADS-1 : numThread - 1;
 	int suivant= (numThread==NB_THREADS-1) ? 0 : numThread + 1;
 
-	static int numTour=0; /** Nombre de tour */
+	static int numTour=0; // Nombre de tour 
 	int i,j;
 	while ((numTour / 4) < NB_TOUR){
 		numTour++;
@@ -234,13 +235,12 @@ void * thread(void *numeroThread){
 
 int main(int argc, char *argv[])
 {
-	if (argc != 3){
+	if (argc == 3){
   		NB_TOUR = atoi(argv[1]);
   		NB_THREADS = atoi(argv[2]);
 	}
 
 	int i;
-	
 	//on déclare les threads
 	pthread_t th[NB_THREADS];
 
