@@ -6,7 +6,7 @@
 #include "CONSTANTES.h"
 static int NB_THREADS=4; /* Nombre de threads */
 static int NB_TOUR=5;
- 
+
 /* La barrière utilisée à chaque fin de boucle des threads */
 static pthread_barrier_t barriere;
 
@@ -199,7 +199,7 @@ void * thread(void *numeroThread){
 
 	static int numTour=0; // Nombre de tour 
 	int i,j;
-	while ((numTour / 4) < NB_TOUR){
+	while ((numTour / NB_THREADS) < NB_TOUR){
 		numTour++;
 		copieDesBords(p,debutLigneTraitement,finTraitement,numThread);
 		//afficherPlateau(p);
@@ -226,6 +226,7 @@ void * thread(void *numeroThread){
             	miseAjourCellule(&p.matrice[i][j]);
 			}
 	    }
+
 	    //barriere
 	    pthread_barrier_wait(&barriere);
 	}

@@ -136,37 +136,44 @@ int nombreVoisinsVivants(Plateau p, Cellule c)
 
 /**
 * Met a jour la cellule passee en parametre
+* return 1 si la cellule a ete modifiee
 */
-void miseAjourCellule(Cellule *c)
+int miseAjourCellule(Cellule *c)
 {
 	if(c->val == 0 && c->nbVoisins == SEUIL_VIVANT)//si la cellule est morte et extactement 3 voisins vivants
 	{
 		c->val = 1;
+		return 1;
 	}
 	else if(c->val == 1)//si elle est vivante
 	{
-		if(c->nbVoisins < SEUIL_MIN_MORT){ c->val=0; }// 0 ou 1 voisin vivant = meurt isolement
-		else if(c->nbVoisins > SEUIL_MAX_MORT){ c->val=0; }// plus de 4 voisins = meurt etouffement
+		if(c->nbVoisins < SEUIL_MIN_MORT){ c->val=0; return 1;}// 0 ou 1 voisin vivant = meurt isolement
+		else if(c->nbVoisins > SEUIL_MAX_MORT){ c->val=0; return 1;}// plus de 4 voisins = meurt etouffement
 	}
+	return 0;
 }
 
+void modificationCellule(Cellule *c, int val){
+		c->val=val;
+}
 /**
 * Copie les bords ainsi que les coins a l'oppose
 */
 void copieDesBords(Plateau p,int debutLigneTraitement, int finTraitement, int numThread){
 	int i=0;
 	if (numThread==0){
-		p.matrice[p.taille+1][0].val=p.matrice[1][p.taille].val; //coin bas gauche
-		p.matrice[p.taille+1][p.taille+1].val=p.matrice[1][1].val; //coin bas droite
+		modificationCellule(&p.matrice[p.taille+1][0],p.matrice[1][p.taille].val); //coin bas gauche
+		modificationCellule(&p.matrice[p.taille+1][p.taille+1],p.matrice[1][1].val); //coin bas droite
 		for(i=1;i<p.taille+1;i++){
-			p.matrice[0][i].val=p.matrice[p.taille][i].val; //modification dessus
+			modificationCellule(&p.matrice[0][i],p.matrice[p.taille][i].val); //modification dessus
 		}
+		return;
 	}
 	else if (numThread==NB_THREADS-1){
-		p.matrice[0][0].val=p.matrice[p.taille][p.taille].val;  //coin haut gauche
-		p.matrice[0][p.taille+1].val=p.matrice[p.taille][1].val; //coin haut droit
+		modificationCellule(&p.matrice[0][0],p.matrice[p.taille][p.taille].val);  //coin haut gauche
+		modificationCellule(&p.matrice[0][p.taille+1],p.matrice[p.taille][1].val);  //coin haut droit
 		for(i=1;i<p.taille+1;i++)
-			p.matrice[p.taille+1][i].val=p.matrice[1][i].val; //desous
+			modificationCellule(&p.matrice[p.taille+1][i],p.matrice[1][i].val);//desous
 	}
 }
 
@@ -177,8 +184,9 @@ void * thread(void *numeroThread){
 	// numero du thread
 	int numThread=(int)numeroThread; 
 	//variable pour la stagnation
-	int nb_cellule_bord_vivante=0;
-	int nb_cellule_inter_change=0;
+	int nb_cellule_bord_change=0;
+	int nb_cellule_bord_change_suivant=0;
+	int nb_cellule_inter_change=1;
 	
 	// ligne à partir de laquelle le thread va commencer son traitement
 	int debutLigneTraitement= debutLigneTraitement= numThread *(LARGEUR_PLATEAU / NB_THREADS)+1;
@@ -193,17 +201,19 @@ void * thread(void *numeroThread){
 	int suivant= (numThread==NB_THREADS-1) ? 0 : numThread + 1;
 	int numTour=0; /** Nombre de tour *4 */
 	int i,j;
-	int test=2;
 	while ((numTour / NB_THREADS) < NB_TOUR){
+		nb_cellule_bord_change= nb_cellule_bord_change_suivant;
+		nb_cellule_bord_change_suivant=0;
 		numTour++;
+
+		// copie uniquement des bords qui ont une conséquence sur plusieurs threads
 		copieDesBords(p,debutLigneTraitement,finTraitement,numThread);
-		//afficherPlateau(p);
 
 	    //Copie des bords "extérieur" qui ont une insidence sur le thread courant
-	    p.matrice[debutLigneTraitement][0].val = p.matrice[debutLigneTraitement][p.taille].val;     
-	    p.matrice[debutLigneTraitement][p.taille+1].val = p.matrice[debutLigneTraitement][1].val;
-	    p.matrice[finTraitement-1][0].val = p.matrice[finTraitement-1][p.taille].val;     
-	    p.matrice[finTraitement-1][p.taille+1].val = p.matrice[finTraitement-1][1].val;
+	    modificationCellule(&p.matrice[debutLigneTraitement][0],p.matrice[debutLigneTraitement][p.taille].val);     
+	    modificationCellule(&p.matrice[debutLigneTraitement][p.taille+1],p.matrice[debutLigneTraitement][1].val);
+	    modificationCellule(&p.matrice[finTraitement-1][0],p.matrice[finTraitement-1][p.taille].val);     
+	    modificationCellule(&p.matrice[finTraitement-1][p.taille+1],p.matrice[finTraitement-1][1].val);
 
 
 		// On previent les voisins que les copies des bords indispensables pour leurs calculs sont terminees
@@ -219,33 +229,68 @@ void * thread(void *numeroThread){
 	    sem_wait(&sem_apres_copie[numThread]);
 	 	//printf("%d tour :%d apres copie \n", numThread, numTour);
 
+
 		// Calcul du nombre de voisins pour cellules extérieures
 	    for(i = 1; i< p.taille+1 ; i++){
-		    p.matrice[debutLigneTraitement][i].nbVoisins = nombreVoisinsVivants(p,p.matrice[i][j]);
-		    p.matrice[finTraitement-1][i].nbVoisins = nombreVoisinsVivants(p,p.matrice[i][j]);
+		    if(p.matrice[debutLigneTraitement][i].nbVoisins != nombreVoisinsVivants(p,p.matrice[i][j])){
+		    	p.matrice[debutLigneTraitement][i].nbVoisins = nombreVoisinsVivants(p,p.matrice[i][j]);
+		    	nb_cellule_bord_change_suivant++;
+		    }
+		    if(p.matrice[finTraitement-1][i].nbVoisins = nombreVoisinsVivants(p,p.matrice[i][j])){
+		    	p.matrice[finTraitement-1][i].nbVoisins = nombreVoisinsVivants(p,p.matrice[i][j]);
+		    	nb_cellule_bord_change_suivant++;
+		    }
 	    }
 
 
 		// On prévient les voisins que l'on a fini de traiter les bords
 	    sem_post(&sem_apres_calcul_voisin[suivant]);
 	    sem_post(&sem_apres_calcul_voisin[precedent]);
-		// Calcul du nombre de voisins pour cellules intérieurs
+
 	    for(i = debutLigneTraitement+1; i< finTraitement-1 ; i++){
-			for (j=1; j<p.taille+1;j++){    
-		        p.matrice[i][j].nbVoisins = nombreVoisinsVivants(p,p.matrice[i][j]);
-			}
+	        if(p.matrice[i][1].nbVoisins != nombreVoisinsVivants(p,p.matrice[i][1])){
+		    	p.matrice[i][1].nbVoisins = nombreVoisinsVivants(p,p.matrice[i][1]);
+		    	nb_cellule_bord_change_suivant++;
+		    }
+		    if(p.matrice[i][p.taille].nbVoisins != nombreVoisinsVivants(p,p.matrice[i][p.taille])){
+		    	p.matrice[i][p.taille].nbVoisins = nombreVoisinsVivants(p,p.matrice[i][p.taille]);
+		    	nb_cellule_bord_change_suivant++;
+		    }
+	    }
+
+	    //si les bords de la zone et l'intérieur n'a pas changé
+		if (nb_cellule_bord_change!=0 || nb_cellule_inter_change!=0)
+	    {
+			// Calcul du nombre de voisins pour cellules intérieurs
+		    for(i = debutLigneTraitement+1; i< finTraitement-1 ; i++){
+				for (j=2; j<p.taille;j++){    
+			        p.matrice[i][j].nbVoisins = nombreVoisinsVivants(p,p.matrice[i][j]);
+				}
+		    }
 	    }
 	    sem_wait(&sem_apres_calcul_voisin[numThread]);
 	    sem_wait(&sem_apres_calcul_voisin[numThread]);
 	 	//printf("%d tour :%d apres Calcul \n", numThread, numTour);
-	    
-	    //application MAJ des cellules
-	    for(i=debutLigneTraitement; i< finTraitement ;i++){
-          	for (j=1; j<p.taille+1;j++){
-            	miseAjourCellule(&p.matrice[i][j]);
-			}
+	    if (nb_cellule_bord_change!=0 || nb_cellule_inter_change!=0)
+	    {
+	    	nb_cellule_inter_change=0;
+		    //application MAJ des cellules
+		    for(i=debutLigneTraitement; i< finTraitement ;i++){
+	          	for (j=1; j<p.taille+1;j++){
+	            	nb_cellule_inter_change+=miseAjourCellule(&p.matrice[i][j]);
+				}
+		    }
 	    }
-	    
+	    else if (nb_cellule_bord_change_suivant!=0){
+          	for (j=1; j<p.taille+1;j++){
+            	miseAjourCellule(&p.matrice[debutLigneTraitement][j]);
+            	miseAjourCellule(&p.matrice[finTraitement-1][j]);
+			}
+		    for(i=debutLigneTraitement; i< finTraitement ;i++){
+		    	miseAjourCellule(&p.matrice[i][1]);
+            	miseAjourCellule(&p.matrice[i][p.taille+1]);
+		    } 
+	    }
 	}
 	pthread_exit(0);
 	return NULL;
