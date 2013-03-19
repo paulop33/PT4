@@ -7,6 +7,24 @@
 #include <pthread.h>
 #include "CONSTANTES.h"
 
-	 void afficherVue(/*Plateau p*/);
+typedef struct Cellule Cellule;
+struct Cellule
+{
+	int val;
+	int nbVoisins;
+	int posLigne;
+	int posCol;
+};
+
+
+typedef struct Plateau Plateau;
+struct Plateau
+{
+	Cellule ** matrice;
+	int taille;
+
+};
+
+	 void afficherVue(Plateau p);
 	
 #endif
